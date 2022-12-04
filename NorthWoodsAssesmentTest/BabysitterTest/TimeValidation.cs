@@ -41,10 +41,12 @@ namespace NorthWoodsAssesmentTest.BabysitterTest
 
 			var objectUnderTest = new Babysitter();
 
-			try {
+			try
+			{
 				objectUnderTest.GetPayForNight(validStartTime, validEndTime, _validBedTime);
 			}
-			catch(Exception e){
+			catch (Exception e)
+			{
 				Assert.Fail($"Expected no exception but received {e.GetType().Name} with message: {e.Message}");
 			}
 		}

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NorthWoodsAssessment;
 
 namespace NorthWoodsAssesmentTest.BabysitterTest
@@ -26,7 +21,8 @@ namespace NorthWoodsAssesmentTest.BabysitterTest
 		}
 
 		[TestMethod]
-		public void RoundsEndTimeUp(){
+		public void RoundsEndTimeUp()
+		{
 			var startTime = GetDateTime(day: 1, hour: 18);
 			var endTime = GetDateTime(day: 1, hour: 19, minute: 6);
 			var bedTime = GetDateTime(day: 1, hour: 22);
@@ -40,7 +36,8 @@ namespace NorthWoodsAssesmentTest.BabysitterTest
 		}
 
 		[TestMethod]
-		public void RoundsBedTimeUp(){
+		public void RoundsBedTimeUp()
+		{
 			var startTime = GetDateTime(day: 1, hour: 18);
 			// 3 hours of pre-bed pay = 3 * $12 = $36
 			var bedTime = GetDateTime(day: 1, hour: 20, minute: 10);
