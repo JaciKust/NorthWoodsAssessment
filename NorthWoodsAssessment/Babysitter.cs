@@ -42,54 +42,93 @@
 
 			if (roundedEndTime.Hour > 4 && roundedEndTime.Hour < earliestStartTimeHours)
 			{
-				throw new ArgumentOutOfRangeException(nameof(endTime), $"{nameof(endTime)} must happen before 4am and after 5pm.");
+				throw new ArgumentOutOfRangeException(nameof(roundedEndTime), $"{nameof(roundedEndTime)} must happen before 4am and after 5pm.");
 			}
 
 			if (roundedStartTime > roundedEndTime)
 			{
-				throw new InvalidOperationException($"{nameof(startTime)} must be before {nameof(endTime)}");
+				throw new InvalidOperationException($"{nameof(startTime)} must be before {nameof(roundedEndTime)}");
 			}
 
+			bool asleepAtStart = false;
+			bool ignoreBedtime = false;
 			if (bedTime < startTime)
 			{
-				roundedBedTime = startTime;
+				asleepAtStart = true;
 			}
 
-			const int hoursInADay = 24;
+			if (bedTime > roundedEndTime){
+				ignoreBedtime = true;
+			}
+
+			DateTime midnight;
+			if (roundedStartTime.Hour >= earliestStartTimeHours){
+				// starts in the evening.
+				midnight = new DateTime(
+					roundedStartTime.Year,
+					roundedStartTime.Month,
+					roundedStartTime.Day + 1,
+					hour: 0,
+					minute: 0,
+					second: 0
+				);
+			}
+			else{
+				// starts postMidnight
+				midnight = new DateTime(
+					roundedStartTime.Year,
+					roundedStartTime.Month,
+					roundedStartTime.Day,
+					hour: 0,
+					minute: 0,
+					second: 0
+				);
+			}
+
 			var startToBed = roundedBedTime.Subtract(roundedStartTime).Hours;
-			var startToEnd = roundedEndTime.Subtract(roundedStartTime).Hours;
-			var BedToEnd = roundedEndTime.Subtract(roundedBedTime).Hours;
-			var BedToMidnight = new TimeSpan(hours: hoursInADay - roundedBedTime.Hour, minutes: 0, seconds: 0).Hours;
-			var StartToMidnight = new TimeSpan(hours: hoursInADay - roundedStartTime.Hour, minutes: 0, seconds: 0).Hours;
-			var MidnightToEnd = endTime.Hour < 4 ? new TimeSpan(hours: endTime.Hour, minutes: 0, seconds: 0).Hours : 0;
+			var bedToMidnightHours = midnight.Subtract(roundedBedTime).Hours;
+			var midnightToEndHours = roundedEndTime.Subtract(midnight).Hours;
+			var startToMidnightHours = midnight.Subtract(roundedStartTime).Hours;
+			var startToEndHours = roundedEndTime.Subtract(roundedStartTime).Hours;
+			var bedToEndHours = roundedEndTime.Subtract(roundedBedTime).Hours;
 
-			if (endTime.Hour < earliestStartTimeHours)
+			if (roundedStartTime > midnight)
 			{
-				// Ends after midnight
-				if (bedTime.Hour < earliestStartTimeHours)
+				return startToEndHours * postMidnightPay;
+			}
+
+			if (asleepAtStart)
+			{
+				if (roundedEndTime < midnight)
 				{
-					// bedtime is after midnight and we don't care about it
-					return StartToMidnight * postBedTimePay + MidnightToEnd * postMidnightPay;
+					return startToEndHours * postBedTimePay;
 				}
 				else
 				{
-					// bedtime is before midnight
-					return startToBed * preBedTimePay + BedToMidnight * postBedTimePay + MidnightToEnd * postMidnightPay;
+					return startToMidnightHours * postBedTimePay + (midnightToEndHours > 0 ? midnightToEndHours * postMidnightPay : 0);
 				}
 			}
-			else
+
+			if (ignoreBedtime)
 			{
-				// Ends before midnight
-				if (bedTime >= endTime)
+				if (roundedEndTime <= midnight){
+					return startToEndHours * preBedTimePay;
+				}
+				return startToMidnightHours * preBedTimePay + midnightToEndHours * postMidnightPay;
+			}
+			else {
+				if (roundedEndTime <= midnight)
 				{
-					// Bedtime is after end time and we don't care about it. 
-					return startToEnd * preBedTimePay;
+					return startToBed * preBedTimePay + bedToEndHours * postBedTimePay;
 				}
 				else
 				{
-					// have a bed time we care about 
-					return startToBed * preBedTimePay + BedToEnd * postBedTimePay;
+					if (bedTime > midnight){
+						return startToMidnightHours * preBedTimePay + midnightToEndHours * postMidnightPay;
+					}
+					return startToBed * preBedTimePay + bedToMidnightHours * postBedTimePay + midnightToEndHours * postMidnightPay;
 				}
+
 			}
 		}
 	}
