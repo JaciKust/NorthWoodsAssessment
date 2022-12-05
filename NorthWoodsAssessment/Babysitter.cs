@@ -1,4 +1,6 @@
-﻿namespace NorthWoodsAssessment
+﻿using System.Linq;
+
+namespace NorthWoodsAssessment
 {
 	public class Babysitter
 	{
@@ -11,75 +13,89 @@
 			const double postBedTimePay = 8.00;
 			const double postMidnightPay = 16.00;
 
-
 			DateTime roundedStartTime = RoundStartTime(startTime);
 			DateTime roundedEndTime = RoundEndtime(endTime);
 			DateTime roundedBedTime = RoundBedTime(bedTime);
 
 			ValidateTimes(roundedStartTime, roundedEndTime);
 
-			bool asleepAtStart = false;
-			bool ignoreBedtime = false;
-			if (bedTime < startTime)
-			{
-				asleepAtStart = true;
-			}
-
-			if (bedTime > roundedEndTime)
-			{
-				ignoreBedtime = true;
-			}
-
 			DateTime midnight = GetMidnight(roundedStartTime);
 
-			var startToBed = roundedBedTime.Subtract(roundedStartTime).Hours;
-			var bedToMidnightHours = midnight.Subtract(roundedBedTime).Hours;
-			var midnightToEndHours = roundedEndTime.Subtract(midnight).Hours;
-			var startToMidnightHours = midnight.Subtract(roundedStartTime).Hours;
-			var startToEndHours = roundedEndTime.Subtract(roundedStartTime).Hours;
-			var bedToEndHours = roundedEndTime.Subtract(roundedBedTime).Hours;
+			var timeLine = new Dictionary<TimeName, DateTime>(){
+				{ TimeName.Start, roundedStartTime },
+				{ TimeName.End, roundedEndTime},
+				{ TimeName.Bed, roundedBedTime },
+				{ TimeName.Midnight, midnight },
+			}.OrderBy(x => x.Value);
 
-			if (roundedStartTime > midnight)
-			{
-				return startToEndHours * postMidnightPay;
-			}
+			double totalPay = 0;
+			
+			bool isBedTime = false;
+			bool isMidnight = false;
+			bool isStarted = false;
 
-			if (asleepAtStart)
+			double currentPayRate = GetCurrentPayRate(isMidnight, isBedTime);
+			for (int i = 0; i < timeLine.Count(); i++)
 			{
-				if (roundedEndTime < midnight)
-				{
-					return startToEndHours * postBedTimePay;
-				}
-				else
-				{
-					return startToMidnightHours * postBedTimePay + (midnightToEndHours > 0 ? midnightToEndHours * postMidnightPay : 0);
-				}
-			}
+				var key = timeLine.ElementAt(i).Key;
+				var value = timeLine.ElementAt(i).Value;
 
-			if (ignoreBedtime)
-			{
-				if (roundedEndTime <= midnight)
+				bool hasPreviousTime = i > 0;
+				DateTime previousTime = DateTime.Now;
+				if (hasPreviousTime)
 				{
-					return startToEndHours * preBedTimePay;
-				}
-				return startToMidnightHours * preBedTimePay + midnightToEndHours * postMidnightPay;
-			}
-			else
-			{
-				if (roundedEndTime <= midnight)
-				{
-					return startToBed * preBedTimePay + bedToEndHours * postBedTimePay;
-				}
-				else
-				{
-					if (bedTime > midnight)
-					{
-						return startToMidnightHours * preBedTimePay + midnightToEndHours * postMidnightPay;
-					}
-					return startToBed * preBedTimePay + bedToMidnightHours * postBedTimePay + midnightToEndHours * postMidnightPay;
+					previousTime = timeLine.ElementAt(i - 1).Value;
 				}
 
+				switch (key)
+				{
+					case TimeName.Start:
+						isStarted = true;
+						break;
+					case TimeName.Midnight:
+						if (isStarted)
+						{
+							totalPay += GetPay(isBedTime, isMidnight, value, previousTime);
+						}
+						isMidnight = true;
+
+						break;
+					case TimeName.Bed:
+						if (isStarted)
+						{
+							totalPay += GetPay(isBedTime, isMidnight, value, previousTime);
+						}
+						isBedTime = true;
+						break;
+					case TimeName.End:
+						totalPay += GetPay(isBedTime, isMidnight, value, previousTime);
+						return totalPay;
+				}
 			}
+
+			throw new Exception("No end found");
+		}
+
+		private double GetPay(bool isBedTime, bool isMidnight, DateTime value, DateTime previousTime)
+		{
+			var timePassed = value.Subtract(previousTime).Hours;
+			return timePassed * GetCurrentPayRate(isMidnight, isBedTime);
+		}
+
+		private double GetCurrentPayRate(bool isMidnight, bool isBedTime){
+			if (isMidnight)
+				return 16;
+			if (isBedTime)
+				return 8;
+			return 12;
+		}
+
+		private enum TimeName
+		{
+			Start,
+			Bed,
+			Midnight,
+			End
 		}
 
 		private static DateTime GetMidnight(DateTime roundedStartTime)
